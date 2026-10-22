@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calculadora de Jornada - Fim da Escala 6x1</title>
+<style>
+/* Layout: página única, resumo fixo no alto do resultado, tabela semanal que vira cartões no celular. */
+:root {
+  --bg: #f3f6f7;
+  --surface: #ffffff;
+  --ink: #14232b;
+  --muted: #55666e;
+  --line: #d3dde1;
+  --accent: #0b6b63;
+  --accent-ink: #ffffff;
+  --input-bg: #fffbe8;
+  --input-line: #c9b86a;
+  --ok-bg: #dff3e6; --ok-ink: #0f5a2c;
+  --warn-bg: #fff0c2; --warn-ink: #7a4b00;
+  --err-bg: #fddcdc; --err-ink: #8c1111;
+  --info-bg: #e1ecf7; --info-ink: #1d4670;
+  --calc-bg: #eef2f4;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1a1f; --surface: #172830; --ink: #e8f0f3; --muted: #9bb0b9; --line: #2c424c;
+    --accent: #3fb8aa; --accent-ink: #062521; --input-bg: #2a2a1c; --input-line: #7d7132;
+    --ok-bg: #12392a; --ok-ink: #9fe3b8; --warn-bg: #3d3010; --warn-ink: #ffd98a;
+    --err-bg: #4a1a1a; --err-ink: #ffb4b4; --info-bg: #17324a; --info-ink: #a9d0f5; --calc-bg: #1e323b;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html { color-scheme: light dark; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  padding-block: 24px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1040px; margin: 0 auto; display: grid; gap: 18px; }
+h1 { font-size: 1.55rem; line-height: 1.2; margin: 0; text-wrap: balance; }
+h2 { font-size: 1rem; margin: 0 0 12px; letter-spacing: .02em; }
+.sub { color: var(--muted); margin: 6px 0 0; max-width: 70ch; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; min-width: 0; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 16px; }
+label.f { display: grid; gap: 4px; font-weight: 600; font-size: .86rem; min-width: 0; }
+label.f small { font-weight: 400; color: var(--muted); }
+input[type=text], input[type=tel], textarea {
+  font: inherit; color: inherit; background: var(--input-bg); border: 1px solid var(--input-line);
+  border-radius: 6px; padding: 8px 10px; width: 100%; min-width: 0;
+}
+textarea { min-height: 70px; resize: vertical; }
+input:focus-visible, textarea:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; }
+.radios { display: flex; flex-wrap: wrap; gap: 10px 22px; }
+.radios label { display: flex; gap: 8px; align-items: center; font-weight: 600; }
+.radios input { width: 18px; height: 18px; accent-color: var(--accent); }
+
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 14px; }
+.kpi { background: var(--calc-bg); border-radius: 8px; padding: 10px 12px; }
+.kpi span { display: block; font-size: .76rem; color: var(--muted); }
+.kpi b { font-size: 1.35rem; font-variant-numeric: tabular-nums; }
+.banner { border-radius: 8px; padding: 10px 12px; font-weight: 600; margin-top: 8px; }
+.banner:empty { display: none; }
+.lv-ok { background: var(--ok-bg); color: var(--ok-ink); }
+.lv-warn { background: var(--warn-bg); color: var(--warn-ink); }
+.lv-err { background: var(--err-bg); color: var(--err-ink); }
+.lv-info { background: var(--info-bg); color: var(--info-ink); }
+.lv-rest { color: var(--muted); }
+
+.tbl { display: grid; gap: 6px; }
+.row { display: grid; gap: 8px; align-items: center;
+  grid-template-columns: 96px 112px repeat(4, minmax(74px, 1fr)) 78px 78px minmax(190px, 2fr); }
+.row.head { font-size: .74rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; padding: 0 8px; }
+.row.day { background: var(--calc-bg); border-radius: 8px; padding: 8px; }
+.row.day.off .cell:not(.c-work) { opacity: .6; }
+.cell { min-width: 0; }
+.cl { display: none; font-size: .72rem; color: var(--muted); font-weight: 600; }
+.dname { font-weight: 700; }
+.row input[type=text] { text-align: center; font-variant-numeric: tabular-nums; font-size: 1.02rem; letter-spacing: .03em; }
+.row input.bad { border-color: #c0392b; background: var(--err-bg); }
+.chk { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: .85rem; }
+.chk input { width: 20px; height: 20px; accent-color: var(--accent); }
+.sr { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+button.folga { width: 100%; padding: 7px 8px; font-size: .8rem; background: transparent; color: var(--accent); }
+button.folga[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.repeat { display: flex; gap: 8px; align-items: center; font-weight: 600; margin: 0 0 12px; }
+.repeat input { width: 20px; height: 20px; accent-color: var(--accent); }
+.row.head div:nth-child(2) { text-align: center; }
+.c-work { text-align: center; }
+.c-work .chk { justify-content: center; }
+input::placeholder { color: var(--muted); opacity: .55; }
+.num { font-variant-numeric: tabular-nums; font-weight: 700; text-align: center; }
+.alert { font-size: .8rem; line-height: 1.3; border-radius: 6px; padding: 5px 8px; min-height: 30px; }
+.alert:empty { display: none; }
+.alert div + div { margin-top: 3px; }
+
+.actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
+button { font: inherit; font-weight: 700; border-radius: 8px; padding: 10px 18px; cursor: pointer; border: 1px solid var(--accent); }
+button.primary { background: var(--accent); color: var(--accent-ink); }
+button.secondary { background: transparent; color: var(--accent); }
+button:disabled { opacity: .55; cursor: not-allowed; }
+.status { margin-top: 10px; font-weight: 600; }
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+details summary { cursor: pointer; font-weight: 600; margin-top: 12px; }
+details textarea { margin-top: 8px; min-height: 160px; font: 12px/1.4 ui-monospace, Menlo, Consolas, monospace; background: var(--calc-bg); border-color: var(--line); }
+.notes { color: var(--muted); font-size: .85rem; display: grid; gap: 6px; }
+.notes p { margin: 0; max-width: 90ch; }
+
+@media (max-width: 880px) {
+  .row.head { display: none; }
+  .row.day { grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px; }
+  .row.day .c-day { grid-column: 1 / 2; }
+  .row.day .c-work { grid-column: 2 / 3; justify-self: end; }
+  .row.day .c-alert { grid-column: 1 / -1; }
+  .cl { display: block; margin-bottom: 2px; }
+  .num { text-align: left; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Calculadora de Jornada — fim da escala 6x1</h1>
+  <p class="sub">Informe os horários de cada dia e veja na hora se a semana fecha no limite da Emenda Constitucional 141/2026. Ao terminar, envie ao escritório.</p>
+</header>
+
+<section class="card" aria-labelledby="h-id">
+  <h2 id="h-id">1. Identificação</h2>
+  <div class="grid2">
+    <label class="f">Empresa <small>Obrigatório</small><input type="text" id="empresa" autocomplete="organization"></label>
+    <label class="f">Nome do(a) funcionário(a) cuja jornada será alterada <small>Obrigatório</small><input type="text" id="empregado"></label>
+  </div>
+</section>
+
+<section class="card" aria-labelledby="h-cen">
+  <h2 id="h-cen">2. Etapa da transição</h2>
+  <div class="radios" role="radiogroup" aria-label="Etapa da transição">
+    <label><input type="radio" name="etapa" value="42" checked> Etapa 1: limite de 42h semanais</label>
+    <label><input type="radio" name="etapa" value="40"> Etapa 2: limite de 40h semanais</label>
+  </div>
+</section>
+
+<section class="card" aria-labelledby="h-sem">
+  <h2 id="h-sem">3. Horários de cada dia</h2>
+  <p class="notes" style="margin:0 0 12px"><span>Digite só os números (ex.: 0800); os dois pontos entram sozinhos. Sem intervalo, preencha apenas entrada e saída. Use "Marcar folga" nos dias de descanso.</span></p>
+  <label class="repeat"><input type="checkbox" id="repeat"> Repetir a jornada do primeiro dia de trabalho nos demais dias (cada dia continua editável)</label>
+  <div class="tbl" id="tbl">
+    <div class="row head" aria-hidden="true">
+      <div>Dia</div><div>Folga</div><div>Entrada</div><div>Saída p/ intervalo</div><div>Volta do intervalo</div><div>Saída</div><div>Jornada</div><div>Intervalo</div><div>Alertas</div>
+    </div>
+  </div>
+</section>
+
+<section class="card" aria-labelledby="h-res">
+  <h2 id="h-res">4. Resultado da semana</h2>
+  <div class="kpis">
+    <div class="kpi"><span>Limite semanal da etapa</span><b id="k-limite">—</b></div>
+    <div class="kpi"><span>Dias de trabalho / repouso</span><b id="k-dias">—</b></div>
+    <div class="kpi"><span>Média por dia trabalhado</span><b id="k-media">—</b></div>
+    <div class="kpi"><span>Total preenchido</span><b id="k-total">—</b></div>
+  </div>
+  <div id="b-rest" class="banner" role="status"></div>
+  <div id="b-conf" class="banner" role="status"></div>
+  <div id="b-minlong" class="notes" style="margin-top:8px"></div>
+</section>
+
+<section class="card" aria-labelledby="h-env">
+  <h2 id="h-env">5. Enviar ao escritório</h2>
+  <label class="f">Observações <small>Opcional. Ex.: categoria, convenção coletiva aplicada, dúvidas.</small><textarea id="obs"></textarea></label>
+  <div class="hp" aria-hidden="true"><label>Não preencha <input type="text" id="gotcha" tabindex="-1" autocomplete="off"></label></div>
+  <div class="actions">
+    <button type="button" class="primary" id="btn-send">Enviar ao escritório</button>
+    <button type="button" class="secondary" id="btn-copy">Copiar resumo</button>
+  </div>
+  <div id="send-status" class="status" role="status" aria-live="polite"></div>
+  <details>
+    <summary>Ver o resumo que será enviado</summary>
+    <textarea id="summary" readonly></textarea>
+  </details>
+</section>
+
+<section class="notes" aria-label="Regras e avisos">
+  <p><b>Regras usadas.</b> Os 42h e 40h são limites semanais. Cada dia pode ter até 10h, compensadas nos outros dias para a semana fechar no limite; jornada diária acima de 8h depende de acordo ou convenção coletiva de compensação. Intervalo mínimo (CLT art. 71): jornada acima de 6h, 60 min; acima de 4h até 6h, 15 min. São exigidos 2 dias de repouso por semana.</p>
+  <p><b>Datas.</b> As vigências (Etapa 1 em torno de 16/12/2026 e Etapa 2 em torno de 16/12/2027) vêm de notícias e devem ser confirmadas no Diário Oficial.</p>
+  <p><b>Limites desta ferramenta.</b> Não cobre professores, regime 12x36, jornadas especiais, atividades contínuas nem intervalos definidos por convenção coletiva. É um apoio ao cálculo e não substitui a análise do escritório.</p>
+</section>
+
+</div>
+
+<script>
+/* ===== Endereço do serviço de formulário (ex.: Formspree). Troque aqui. ===== */
+var FORM_ENDPOINT = "https://formspree.io/f/xyekrlpv";
+var OFFICE_SUBJECT = "Calculadora de jornada (EC 141/2026)";
+
+/* Lógica de cálculo (pura, sem DOM). ES5. */
+var DK = ["seg", "ter", "qua", "qui", "sex", "sab", "dom"];
+var LIMITS = { "42": 42, "40": 40 };
+var BASE_MIN = 480, MAX_MIN = 600, REST_MIN_DAYS = 2, INTERVAL_MAX = 120;
+
+function parseT(str) {            // null = vazio, NaN = inválido, senão minutos
+  str = (str === undefined || str === null) ? "" : String(str).replace(/^\s+|\s+$/g, "");
+  if (str === "") return null;
+  var m = /^(\d{2}):(\d{2})$/.exec(str);
+  if (!m) return NaN;
+  var h = parseInt(m[1], 10), mm = parseInt(m[2], 10);
+  if (h > 23 || mm > 59) return NaN;
+  return h * 60 + mm;
+}
+function mod1440(a) { return ((a % 1440) + 1440) % 1440; }
+function pad2(n) { return (n < 10 ? "0" : "") + n; }
+function fHM(min) { var s = min < 0 ? "-" : ""; min = Math.abs(min); return s + Math.floor(min / 60) + ":" + pad2(min % 60); }
+function rhu(x) { return Math.floor(x + 0.5); }
+function minInterval(j) { return j > 360 ? 60 : (j > 240 ? 15 : 0); }
+
+function evalDay(d) {
+  var v = [parseT(d.e), parseT(d.si), parseT(d.vi), parseT(d.s)];
+  var e = v[0], si = v[1], vi = v[2], s = v[3];
+  var r = { status: "vazio", j: 0, iv: 0, aj: "", ai: "", cont: false };
+  var filled = 0, invalid = false, i;
+  for (i = 0; i < 4; i++) {
+    if (v[i] !== null) { filled++; if (isNaN(v[i])) invalid = true; }
+  }
+  if (filled === 0) return r;
+  if (invalid) { r.status = "invalido"; r.aj = "ERRO: horário inválido (use 00:00 a 23:59)"; return r; }
+  var cont = (si === null && vi === null && e !== null && s !== null);
+  var full = (e !== null && si !== null && vi !== null && s !== null);
+  if (!cont && !full) {
+    r.status = "incompleto";
+    r.aj = "INFO: preencha os quatro horários (ou só entrada e saída, se não há intervalo)";
+    return r;
+  }
+  if (full) {
+    var p1 = mod1440(si - e), iv = mod1440(vi - si), p2 = mod1440(s - vi);
+    if (p1 + iv + p2 >= 1440) { r.status = "invalido"; r.aj = "ERRO: horários fora de ordem"; return r; }
+    r.j = p1 + p2; r.iv = iv;
+  } else {
+    r.j = mod1440(s - e);
+  }
+  if (r.j === 0) { r.status = "invalido"; r.aj = "ERRO: jornada zerada (saída igual à entrada)"; return r; }
+  r.status = "ok"; r.cont = cont;
+  if (r.j > MAX_MIN) r.aj = "ERRO: acima de 10h por dia (limite legal: 8h + 2h)";
+  else r.aj = "OK";
+  var req = minInterval(r.j);
+  if (cont) {
+    if (req > 0) r.ai = "ATENÇÃO: jornada de " + fHM(r.j) + " exige intervalo mínimo de " + req + " min";
+  } else if (r.iv < req) {
+    r.ai = "ATENÇÃO: intervalo de " + r.iv + " min é menor que o mínimo legal (" + req + " min)";
+  } else if (r.iv > INTERVAL_MAX) {
+    r.ai = "ATENÇÃO: intervalo acima de 2h exige acordo escrito ou convenção coletiva";
+  }
+  return r;
+}
+
+function compute(inp) {
+  var o = {}, i;
+  var stage = LIMITS[inp.stage] ? inp.stage : "42";
+  o.stage = stage; o.limit = LIMITS[stage];
+  var ch = parseFloat(String(inp.contrato === undefined ? "" : inp.contrato).replace(",", "."));
+  if (!(ch > 0)) ch = 44;
+  o.contrato = ch;
+  o.eff = Math.min(ch, o.limit);
+  o.efm = rhu(o.eff * 60);
+  o.n = 0;
+  for (i = 0; i < 7; i++) if (inp.works[i]) o.n++;
+  o.rest = 7 - o.n;
+  o.unif = o.n > 0 ? rhu(o.efm / o.n) : 0;
+  var need = o.efm - (o.n - 1) * BASE_MIN;
+  o.minlong = (o.n > 1 && need > BASE_MIN) ? need : null;   // minutos (pode exceder 600)
+  o.days = []; o.total = 0; o.okCount = 0; o.pending = 0;
+  for (i = 0; i < 7; i++) {
+    var dd;
+    if (!inp.works[i]) dd = { status: "repouso", j: 0, iv: 0, aj: "Repouso", ai: "", cont: false };
+    else {
+      dd = evalDay(inp.days[i]);
+      if (dd.status === "ok") { o.total += dd.j; o.okCount++; } else o.pending++;
+    }
+    o.days.push(dd);
+  }
+  // repouso
+  if (o.n === 0) o.restAlert = "ATENÇÃO: marque ao menos um dia trabalhado";
+  else if (o.rest < REST_MIN_DAYS) o.restAlert = "ERRO: repouso semanal menor que " + REST_MIN_DAYS + " dias, exigido nesta etapa";
+  else o.restAlert = "OK";
+  // conferência semanal
+  var rem = o.efm - o.total;
+  if (o.n === 0) o.conf = "";
+  else if (o.okCount === 0) o.conf = "INFO: preencha os horários dos dias trabalhados";
+  else if (o.pending > 0) {
+    if (rem <= 0) o.conf = "INFO: os dias já preenchidos somam " + fHM(o.total) + " (limite " + fHM(o.efm) + "). Faltam " + o.pending + " dia(s); a jornada deles seria hora extra";
+    else o.conf = "INFO: faltam " + o.pending + " dia(s). Para fechar em " + fHM(o.efm) + ", esses dias devem somar " + fHM(rem) + " (média de " + fHM(rhu(rem / o.pending)) + " por dia)";
+  } else if (rem === 0) o.conf = "OK: a semana fecha exatamente em " + fHM(o.total) + " (limite " + fHM(o.efm) + ")";
+  else if (rem < 0) o.conf = "ATENÇÃO: excede o limite semanal em " + fHM(-rem) + " - o excedente é hora extra";
+  else o.conf = "INFO: jornada " + fHM(rem) + " abaixo do limite semanal";
+  return o;
+}
+
+
+
+var NAMES = { seg: "Segunda", ter: "Terça", qua: "Quarta", qui: "Quinta", sex: "Sexta", sab: "Sábado", dom: "Domingo" };
+function $(id) { return document.getElementById(id); }
+
+(function build() {
+  var tbl = $("tbl");
+  for (var i = 0; i < 7; i++) {
+    var k = DK[i];
+    var row = document.createElement("div");
+    row.className = "row day"; row.id = "row_" + k;
+    row.innerHTML =
+      '<div class="cell c-day dname">' + NAMES[k] + '</div>' +
+      '<div class="cell c-work"><input type="checkbox" class="sr" id="w_' + k + '"' + (i < 5 ? " checked" : "") + ' tabindex="-1" aria-hidden="true"><button type="button" class="folga" id="b_' + k + '" aria-pressed="false">Marcar folga</button></div>' +
+      '<div class="cell"><span class="cl">Entrada</span><input type="text" id="e_' + k + '" inputmode="numeric" maxlength="5" placeholder="00:00" autocomplete="off" aria-label="' + NAMES[k] + ': entrada"></div>' +
+      '<div class="cell"><span class="cl">Saída p/ intervalo</span><input type="text" id="si_' + k + '" inputmode="numeric" maxlength="5" placeholder="00:00" autocomplete="off" aria-label="' + NAMES[k] + ': saída para o intervalo"></div>' +
+      '<div class="cell"><span class="cl">Volta do intervalo</span><input type="text" id="vi_' + k + '" inputmode="numeric" maxlength="5" placeholder="00:00" autocomplete="off" aria-label="' + NAMES[k] + ': volta do intervalo"></div>' +
+      '<div class="cell"><span class="cl">Saída</span><input type="text" id="s_' + k + '" inputmode="numeric" maxlength="5" placeholder="00:00" autocomplete="off" aria-label="' + NAMES[k] + ': saída"></div>' +
+      '<div class="cell"><span class="cl">Jornada</span><div class="num" id="j_' + k + '">—</div></div>' +
+      '<div class="cell"><span class="cl">Intervalo</span><div class="num" id="iv_' + k + '">—</div></div>' +
+      '<div class="cell c-alert"><div class="alert" id="al_' + k + '"></div></div>';
+    tbl.appendChild(row);
+  }
+})();
+
+function normalizeTime(v) {
+  var d = v.replace(/\D/g, "").slice(0, 4);
+  if (d.length === 0) return "";
+  if (d.length === 1) return "0" + d + ":00";
+  if (d.length === 2) return d + ":00";
+  if (d.length === 3) return "0" + d.charAt(0) + ":" + d.slice(1);
+  return d.slice(0, 2) + ":" + d.slice(2);
+}
+function maskInput(el) {
+  el.addEventListener("input", function (ev) {
+    var del = ev.inputType && ev.inputType.indexOf("delete") === 0;
+    var d = el.value.replace(/\D/g, "").slice(0, 4);
+    var v = d;
+    if (d.length > 2) v = d.slice(0, 2) + ":" + d.slice(2);
+    else if (d.length === 2 && !del) v = d + ":";
+    el.value = v;
+    var key = el.id.split("_")[1];
+    if (DK.indexOf(key) !== REPEAT_SRC) MANUAL[key] = true;   // dia editado à mão deixa de acompanhar o primeiro dia
+    update();
+  });
+  el.addEventListener("blur", function () { el.value = normalizeTime(el.value); update(); });
+}
+DK.forEach(function (k) {
+  ["e_", "si_", "vi_", "s_"].forEach(function (p) { maskInput($(p + k)); });
+  $("b_" + k).addEventListener("click", function () { var cb = $("w_" + k); cb.checked = !cb.checked; update(); });
+});
+["empresa", "empregado", "obs"].forEach(function (id) { $(id).addEventListener("input", update); });
+$("repeat").addEventListener("change", function () { MANUAL = {}; update(); });
+Array.prototype.forEach.call(document.getElementsByName("etapa"), function (r) { r.addEventListener("change", update); });
+
+var REPEAT_SRC = -1;
+var MANUAL = {};
+function readState() {
+  var st = "42";
+  Array.prototype.forEach.call(document.getElementsByName("etapa"), function (r) { if (r.checked) st = r.value; });
+  var works = [], days = [];
+  REPEAT_SRC = -1;
+  DK.forEach(function (k, i) { if (REPEAT_SRC < 0 && $("w_" + k).checked) REPEAT_SRC = i; });
+  if ($("repeat").checked && REPEAT_SRC >= 0) {
+    var sk = DK[REPEAT_SRC];
+    DK.forEach(function (k, i) {
+      if (i !== REPEAT_SRC && $("w_" + k).checked) {
+        if (!MANUAL[k]) ["e_", "si_", "vi_", "s_"].forEach(function (p) { $(p + k).value = $(p + sk).value; });
+      }
+    });
+  }
+  DK.forEach(function (k) {
+    works.push($("w_" + k).checked);
+    days.push({ e: $("e_" + k).value, si: $("si_" + k).value, vi: $("vi_" + k).value, s: $("s_" + k).value });
+  });
+  return { stage: st, contrato: "44", works: works, days: days };
+}
+
+function levelOf(t) {
+  if (!t) return "";
+  if (t.indexOf("ERRO") === 0) return "lv-err";
+  if (t.indexOf("ATENÇÃO") === 0) return "lv-warn";
+  if (t.indexOf("OK") === 0) return "lv-ok";
+  return "lv-info";
+}
+
+function buildSummary(st, o) {
+  var L = [];
+  L.push("CALCULADORA DE JORNADA - EC 141/2026");
+  L.push("Empresa: " + ($("empresa").value || "-"));
+  L.push("Funcionário(a): " + ($("empregado").value || "-"));
+  L.push("Etapa: limite de " + o.limit + "h semanais");
+  L.push("Dias de trabalho: " + o.n + " | Repouso: " + o.rest + " | Média por dia: " + (o.n ? fHM(o.unif) : "-"));
+  L.push("");
+  L.push("Dia | Entrada | Saída interv. | Volta interv. | Saída | Jornada | Intervalo | Situação");
+  DK.forEach(function (k, i) {
+    var d = o.days[i];
+    if (d.status === "repouso") { L.push(NAMES[k] + " | repouso"); return; }
+    var dy = st.days[i];
+    var sit = d.aj + (d.ai ? " / " + d.ai : "");
+    L.push(NAMES[k] + " | " + (dy.e || "-") + " | " + (dy.si || "-") + " | " + (dy.vi || "-") + " | " + (dy.s || "-") + " | " +
+      (d.status === "ok" ? fHM(d.j) : "-") + " | " + (d.status === "ok" ? d.iv + " min" : "-") + " | " + sit);
+  });
+  L.push("");
+  L.push("Total da semana: " + fHM(o.total) + " (limite " + fHM(o.efm) + ")");
+  L.push("Repouso: " + o.restAlert);
+  if (o.conf) L.push("Conferência: " + o.conf);
+  if ($("obs").value) { L.push(""); L.push("Observações: " + $("obs").value); }
+  return L.join("\n");
+}
+
+var LAST = null;
+function update() {
+  var st = readState(), o = compute(st);
+  LAST = { st: st, o: o };
+  $("k-limite").textContent = o.limit + "h";
+  $("k-dias").textContent = o.n + " / " + o.rest;
+  $("k-media").textContent = o.n ? fHM(o.unif) : "—";
+  $("k-total").textContent = fHM(o.total);
+  var br = $("b-rest");
+  br.textContent = o.restAlert === "OK" ? "OK: " + o.rest + " dias de repouso por semana" : o.restAlert;
+  br.className = "banner " + levelOf(o.restAlert);
+  var bc = $("b-conf"); bc.textContent = o.conf; bc.className = "banner " + levelOf(o.conf);
+  var bm = $("b-minlong");
+  if (o.minlong === null) bm.textContent = "";
+  else if (o.minlong > MAX_MIN) bm.textContent = "Com " + o.n + " dias, nem um dia de 10h permite que os demais fiquem em 8h.";
+  else bm.textContent = "Para os demais dias ficarem em 8h, um dos dias precisa ter " + fHM(o.minlong) + " (compensação).";
+  DK.forEach(function (k, i) {
+    var d = o.days[i], row = $("row_" + k), on = st.works[i];
+    row.className = "row day" + (on ? "" : " off");
+    var fb = $("b_" + k); fb.setAttribute("aria-pressed", on ? "false" : "true"); fb.textContent = on ? "Marcar folga" : "Em folga (desfazer)";
+    ["e_", "si_", "vi_", "s_"].forEach(function (p) {
+      var el = $(p + k); el.disabled = !on;
+      el.className = (on && isNaN(parseT(el.value))) ? "bad" : "";
+    });
+    $("j_" + k).textContent = d.status === "ok" ? fHM(d.j) : "—";
+    $("iv_" + k).textContent = d.status === "ok" ? d.iv + " min" : "—";
+    var al = $("al_" + k);
+    al.innerHTML = "";
+    var texts = [];
+    if (d.status === "repouso") texts = ["Repouso"];
+    else if (d.status === "vazio") texts = [];
+    else { if (d.aj !== "OK") texts.push(d.aj); if (d.ai) texts.push(d.ai); }
+    var worst = "";
+    texts.forEach(function (t) {
+      var div = document.createElement("div"); div.textContent = t; al.appendChild(div);
+      var lv = t === "Repouso" ? "lv-rest" : levelOf(t);
+      if (worst === "" || lv === "lv-err" || (lv === "lv-warn" && worst !== "lv-err")) worst = lv;
+    });
+    al.className = "alert " + worst;
+  });
+  $("summary").value = buildSummary(st, o);
+}
+
+function setStatus(msg, lvl) { var s = $("send-status"); s.textContent = msg; s.className = "status " + (lvl || ""); }
+
+$("btn-copy").addEventListener("click", function () {
+  var ta = $("summary"), text = ta.value;
+  function fallback() {
+    ta.closest("details").open = true; ta.focus(); ta.select();
+    setStatus("Selecionei o resumo: use Ctrl+C (ou Copiar) para copiar.", "lv-info");
+  }
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { setStatus("Resumo copiado.", "lv-ok"); }, fallback);
+    } else fallback();
+  } catch (e) { fallback(); }
+});
+
+$("btn-send").addEventListener("click", function () {
+  if ($("gotcha").value) return;
+  var o = LAST.o;
+  if (!$("empresa").value.trim() || !$("empregado").value.trim()) {
+    setStatus("Preencha a empresa e o nome do(a) funcionário(a) antes de enviar.", "lv-err");
+    ($("empresa").value.trim() ? $("empregado") : $("empresa")).focus(); return;
+  }
+  if (o.okCount === 0) { setStatus("Preencha os horários de pelo menos um dia trabalhado.", "lv-err"); return; }
+  if (FORM_ENDPOINT.indexOf("COLE_AQUI") !== -1) {
+    setStatus("O envio ainda não foi configurado neste arquivo. Use \"Copiar resumo\" e envie por e-mail.", "lv-warn"); return;
+  }
+  var payload = {
+    _subject: OFFICE_SUBJECT + " - " + $("empresa").value.trim() + " - " + $("empregado").value.trim(),
+    empresa: $("empresa").value.trim(), funcionario: $("empregado").value.trim(),
+    resumo: $("summary").value
+  };
+  var btn = $("btn-send"); btn.disabled = true; setStatus("Enviando...", "lv-info");
+  fetch(FORM_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json" }, body: JSON.stringify(payload) })
+    .then(function (r) {
+      if (r.ok) setStatus("Enviado ao escritório. Obrigado!", "lv-ok");
+      else { setStatus("Não foi possível enviar agora. Use \"Copiar resumo\" e envie por e-mail.", "lv-err"); btn.disabled = false; }
+    })
+    .catch(function () { setStatus("Sem conexão com o serviço de envio. Use \"Copiar resumo\" e envie por e-mail.", "lv-err"); btn.disabled = false; });
+});
+
+update();
+</script>
+</body>
+</html>
