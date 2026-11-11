@@ -199,7 +199,6 @@ details textarea { margin-top: 8px; min-height: 160px; font: 12px/1.4 ui-monospa
   </div>
   <div id="b-rest" class="banner" role="status"></div>
   <div id="b-conf" class="banner" role="status"></div>
-  <div id="b-minlong" class="notes" style="margin-top:8px"></div>
   <div class="actions">
     <button type="button" class="primary" id="btn-add">Adicionar à lista</button>
     <button type="button" class="secondary" id="btn-cancel" hidden>Cancelar edição</button>
@@ -231,7 +230,7 @@ details textarea { margin-top: 8px; min-height: 160px; font: 12px/1.4 ui-monospa
 </section>
 
 <section class="notes" aria-label="Regras e avisos">
-  <p><b>Regras usadas.</b> Os 42h e 40h são limites semanais. Cada dia pode ter até 10h, compensadas nos outros dias para a semana fechar no limite. Intervalo: até 4h, sem intervalo; acima de 4h até 6h, 15 min; acima de 6h, conforme a convenção da categoria escolhida. São exigidos 2 dias de repouso por semana.</p>
+  <p><b>Regras usadas.</b> Os 42h e 40h são limites semanais. Cada dia pode ter até 10h. A semana não pode passar do limite. Intervalo: até 4h, sem intervalo; acima de 4h até 6h, 15 min; acima de 6h, conforme a convenção da categoria escolhida. São exigidos 2 dias de repouso por semana.</p>
   <p><b>Datas.</b> As vigências (Etapa 1 em torno de 16/12/2026 e Etapa 2 em torno de 16/12/2027) vêm de notícias e devem ser confirmadas no Diário Oficial.</p>
   <p><b>Limites desta ferramenta.</b> Não cobre professores, regime 12x36, jornadas especiais nem atividades contínuas. É um apoio ao cálculo e não substitui a análise do escritório.</p>
 </section>
@@ -695,10 +694,6 @@ function update() {
   br.textContent = o.restAlert === "OK" ? "OK: " + o.rest + " dias de repouso por semana" : o.restAlert;
   br.className = "banner " + levelOf(o.restAlert);
   var bc = $("b-conf"); bc.textContent = o.conf; bc.className = "banner " + levelOf(o.conf);
-  var bm = $("b-minlong");
-  if (o.minlong === null) bm.textContent = "";
-  else if (o.minlong > MAX_MIN) bm.textContent = "Com " + o.n + " dias, nem um dia de 10h permite que os demais fiquem em 8h.";
-  else bm.textContent = "Para os demais dias ficarem em 8h, um dos dias precisa ter " + fHM(o.minlong) + " (compensação).";
   DK.forEach(function (k, i) {
     var d = o.days[i], row = $("row_" + k), on = st.works[i];
     row.className = "row day" + (on ? "" : " off");
