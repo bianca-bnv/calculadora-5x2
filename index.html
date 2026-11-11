@@ -146,7 +146,7 @@ details textarea { margin-top: 8px; min-height: 160px; font: 12px/1.4 ui-monospa
 <header>
   <button type="button" id="btn-theme" class="theme" aria-label="Alterar o tema da página">Tema: escuro</button>
   <h1>Calculadora de Jornada</h1>
-  <p class="sub">Informe os horários de cada dia e veja na hora se a semana fecha no limite da Emenda Constitucional 141/2026. Ao terminar, envie ao escritório.</p>
+  <p class="sub">Informe os horários de cada dia e veja na hora se a semana fecha no limite da Emenda Constitucional 141/2026. Ao terminar, copie o resumo e envie ao escritório.</p>
 </header>
 
 <section class="card" aria-labelledby="h-id">
@@ -200,7 +200,7 @@ details textarea { margin-top: 8px; min-height: 160px; font: 12px/1.4 ui-monospa
   <div id="b-rest" class="banner" role="status"></div>
   <div id="b-conf" class="banner" role="status"></div>
   <div class="actions">
-    <button type="button" class="primary" id="btn-add">Adicionar à lista</button>
+    <button type="button" class="primary" id="btn-add">Adicionar o funcionário à lista</button>
     <button type="button" class="secondary" id="btn-cancel" hidden>Cancelar edição</button>
   </div>
   <div id="add-status" class="status" role="status" aria-live="polite"></div>
@@ -215,16 +215,13 @@ details textarea { margin-top: 8px; min-height: 160px; font: 12px/1.4 ui-monospa
 </section>
 
 <section class="card" aria-labelledby="h-env">
-  <h2 id="h-env">6. Enviar ao escritório</h2>
-  <label class="f">Observações <small>Opcional. Ex.: convenção coletiva aplicada, dúvidas.</small><textarea id="obs"></textarea></label>
-  <div class="hp" aria-hidden="true"><label>Não preencha <input type="text" id="gotcha" tabindex="-1" autocomplete="off"></label></div>
+  <h2 id="h-env">6. Resumo para o escritório</h2>
   <div class="actions">
-    <button type="button" class="primary" id="btn-send">Enviar ao escritório</button>
-    <button type="button" class="secondary" id="btn-copy">Copiar resumo</button>
+    <button type="button" class="primary" id="btn-copy">Copiar resumo</button>
   </div>
   <div id="send-status" class="status" role="status" aria-live="polite"></div>
   <details>
-    <summary>Ver o resumo de toda a lista que será enviado</summary>
+    <summary>Ver o resumo de toda a lista</summary>
     <textarea id="summary" readonly></textarea>
   </details>
 </section>
@@ -238,9 +235,6 @@ details textarea { margin-top: 8px; min-height: 160px; font: 12px/1.4 ui-monospa
 </div>
 
 <script>
-/* ===== Endereço do serviço de formulário (ex.: Formspree). Troque aqui. ===== */
-var FORM_ENDPOINT = "https://formspree.io/f/xyekrlpv";
-var OFFICE_SUBJECT = "Calculadora de jornada (EC 141/2026)";
 
 /* ===== Categorias: regras de intervalo para jornadas acima de 6h =====
    min / max em minutos; null = conforme CLT (mínimo 60, máximo 120). */
@@ -460,7 +454,7 @@ DK.forEach(function (k) {
   ["e_", "si_", "vi_", "s_"].forEach(function (p) { maskInput($(p + k)); });
   $("b_" + k).addEventListener("click", function () { var cb = $("w_" + k); cb.checked = !cb.checked; update(); });
 });
-["empresa", "emp-nome", "emp-sobrenome", "obs"].forEach(function (id) { $(id).addEventListener("input", update); });
+["empresa", "emp-nome", "emp-sobrenome"].forEach(function (id) { $(id).addEventListener("input", update); });
 $("categoria").addEventListener("change", update);
 $("repeat").addEventListener("change", function () { MANUAL = {}; update(); });
 Array.prototype.forEach.call(document.getElementsByName("etapa"), function (r) { r.addEventListener("change", update); });
@@ -535,7 +529,6 @@ function buildSummaryAll() {
   L.push("CNPJ: " + ($("cnpj").value || "-"));
   L.push("Funcionários na lista: " + LIST.length);
   LIST.forEach(function (e, i) { L.push(""); L.push("----------------------------------------"); L.push(entryBlock(e, i + 1)); });
-  if ($("obs").value.trim()) { L.push(""); L.push("========================================"); L.push("Observações: " + $("obs").value.trim()); }
   return L.join("\n");
 }
 
@@ -639,7 +632,7 @@ function loadEntry(e) {
 }
 function cancelEdit(silent) {
   EDIT_ID = null; clearNome();
-  $("btn-add").textContent = "Adicionar à lista"; $("btn-cancel").hidden = true;
+  $("btn-add").textContent = "Adicionar o funcionário à lista"; $("btn-cancel").hidden = true;
   if (!silent) setStatusEl("add-status", "Edição cancelada.", "lv-info");
   renderList(); update();
 }
@@ -665,14 +658,14 @@ $("btn-add").addEventListener("click", function () {
   var wasEdit = !!EDIT_ID;
   if (wasEdit) LIST = LIST.map(function (x) { return x.id === EDIT_ID ? entry : x; }); else LIST.push(entry);
   EDIT_ID = null; clearNome();
-  $("btn-add").textContent = "Adicionar à lista"; $("btn-cancel").hidden = true;
+  $("btn-add").textContent = "Adicionar o funcionário à lista"; $("btn-cancel").hidden = true;
   saveState(); renderList(); update();
   setStatusEl("add-status", (wasEdit ? "Alterações salvas para " : "Adicionado: ") + nome + ". Para o próximo funcionário, digite o nome e o sobrenome e ajuste os horários (eles foram mantidos para facilitar).", "lv-ok");
 });
 
 $("btn-clear").addEventListener("click", function () {
   var b = $("btn-clear");
-  if (b.getAttribute("data-c") === "1") { LIST = []; EDIT_ID = null; $("btn-add").textContent = "Adicionar à lista"; $("btn-cancel").hidden = true; saveState(); renderList(); update(); b.removeAttribute("data-c"); b.textContent = "Limpar a lista"; }
+  if (b.getAttribute("data-c") === "1") { LIST = []; EDIT_ID = null; $("btn-add").textContent = "Adicionar o funcionário à lista"; $("btn-cancel").hidden = true; saveState(); renderList(); update(); b.removeAttribute("data-c"); b.textContent = "Limpar a lista"; }
   else { b.setAttribute("data-c", "1"); b.textContent = "Confirmar: apagar toda a lista"; setTimeout(function () { b.removeAttribute("data-c"); b.textContent = "Limpar a lista"; }, 4000); }
 });
 
@@ -727,6 +720,13 @@ function update() {
 function setStatus(msg, lvl) { var s = $("send-status"); s.textContent = msg; s.className = "status " + (lvl || ""); }
 
 $("btn-copy").addEventListener("click", function () {
+  var missing = null;
+  if (!$("empresa").value.trim()) missing = ["empresa", "Preencha a empresa."];
+  else if ($("cnpj").value.replace(/\D/g, "").length !== 14) missing = ["cnpj", "Preencha o CNPJ completo (14 números)."];
+  else if (LIST.length === 0) missing = ["emp-nome", "Adicione pelo menos um funcionário à lista antes de copiar o resumo."];
+  else if (EDIT_ID) missing = ["emp-nome", "Você está editando um funcionário. Salve as alterações ou cancele a edição antes de copiar."];
+  else if ($("emp-nome").value.trim() || $("emp-sobrenome").value.trim() || $("todos").checked) missing = ["emp-nome", "Há um funcionário preenchido que ainda não foi adicionado. Clique em Adicionar o funcionário à lista ou apague o nome."];
+  if (missing) { setStatus(missing[1], "lv-err"); $(missing[0]).focus(); return; }
   var ta = $("summary"), text = ta.value;
   function fallback() {
     ta.closest("details").open = true; ta.focus(); ta.select();
@@ -734,36 +734,9 @@ $("btn-copy").addEventListener("click", function () {
   }
   try {
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(function () { setStatus("Resumo copiado.", "lv-ok"); }, fallback);
+      navigator.clipboard.writeText(text).then(function () { setStatus("Resumo copiado. Cole na mensagem e envie ao escritório.", "lv-ok"); }, fallback);
     } else fallback();
   } catch (e) { fallback(); }
-});
-
-$("btn-send").addEventListener("click", function () {
-  if ($("gotcha").value) return;
-  var missing = null;
-  if (!$("empresa").value.trim()) missing = ["empresa", "Preencha a empresa."];
-  else if ($("cnpj").value.replace(/\D/g, "").length !== 14) missing = ["cnpj", "Preencha o CNPJ completo (14 números)."];
-  else if (LIST.length === 0) missing = ["emp-nome", "Adicione pelo menos um funcionário à lista antes de enviar."];
-  else if (EDIT_ID) missing = ["emp-nome", "Você está editando um funcionário. Salve as alterações ou cancele a edição antes de enviar."];
-  else if ($("emp-nome").value.trim() || $("emp-sobrenome").value.trim() || $("todos").checked) missing = ["emp-nome", "Há um funcionário preenchido que ainda não foi adicionado. Clique em Adicionar à lista ou apague o nome."];
-  if (missing) { setStatus(missing[1], "lv-err"); $(missing[0]).focus(); return; }
-  if (FORM_ENDPOINT.indexOf("COLE_AQUI") !== -1) {
-    setStatus("O envio ainda não foi configurado neste arquivo. Use \"Copiar resumo\" e envie por e-mail.", "lv-warn"); return;
-  }
-  var payload = {
-    _subject: OFFICE_SUBJECT + " - " + $("empresa").value.trim() + " (" + LIST.length + " funcionário" + (LIST.length > 1 ? "s" : "") + ")",
-    empresa: $("empresa").value.trim(), cnpj: $("cnpj").value, quantidade_funcionarios: LIST.length,
-    resumo: buildSummaryAll()
-  };
-  var btn = $("btn-send"); btn.disabled = true; setStatus("Enviando...", "lv-info");
-  fetch(FORM_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json" }, body: JSON.stringify(payload) })
-    .then(function (r) {
-      if (r.ok) { setStatus("Enviado ao escritório. Obrigado! A lista continua salva neste aparelho; use \"Limpar a lista\" para começar outra.", "lv-ok"); }
-      else { setStatus("Não foi possível enviar agora. Use \"Copiar resumo\" e envie por e-mail.", "lv-err"); }
-      btn.disabled = false;
-    })
-    .catch(function () { setStatus("Sem conexão com o serviço de envio. Use \"Copiar resumo\" e envie por e-mail.", "lv-err"); btn.disabled = false; });
 });
 
 loadState();
