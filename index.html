@@ -230,8 +230,8 @@ details textarea { margin-top: 8px; min-height: 160px; font: 12px/1.4 ui-monospa
 </section>
 
 <section class="notes" aria-label="Regras e avisos">
-  <p><b>Regras usadas.</b> Os 42h e 40h são limites semanais. Cada dia pode ter até 10h. A semana não pode passar do limite. Intervalo: até 4h, sem intervalo; acima de 4h até 6h, 15 min; acima de 6h, conforme a convenção da categoria escolhida. São exigidos 2 dias de repouso por semana.</p>
-  <p><b>Datas.</b> As vigências (Etapa 1 em torno de 16/12/2026 e Etapa 2 em torno de 16/12/2027) vêm de notícias e devem ser confirmadas no Diário Oficial.</p>
+  <p><b>Regras usadas.</b> Os 42h e 40h são limites semanais. A semana não pode passar do limite. Intervalo: até 4h, sem intervalo; acima de 4h até 6h, 15 min; acima de 6h, conforme a convenção da categoria escolhida. São exigidos 2 dias de repouso por semana.</p>
+  <p><b>Datas.</b> Etapa 1 a partir de 16/12/2026 e Etapa 2 a partir de 16/12/2027.</p>
   <p><b>Limites desta ferramenta.</b> Não cobre professores, regime 12x36, jornadas especiais nem atividades contínuas. É um apoio ao cálculo e não substitui a análise do escritório.</p>
 </section>
 
@@ -284,7 +284,7 @@ function rhu(x) { return Math.floor(x + 0.5); }
 var DEFAULT_RULE = { min: 60, max: 120 };   // acima de 6h: mínimo e máximo do intervalo (padrão CLT; a convenção da categoria pode alterar)
 function minInterval(j, minOver6) { return j > 360 ? minOver6 : (j > 240 ? 15 : 0); }
 
-function evalDay(d, rule) {
+function evalDay(d, rule, cap) {
   var v = [parseT(d.e), parseT(d.si), parseT(d.vi), parseT(d.s)];
   var e = v[0], si = v[1], vi = v[2], s = v[3];
   var r = { status: "vazio", j: 0, iv: 0, aj: "", ai: "", cont: false };
@@ -310,7 +310,7 @@ function evalDay(d, rule) {
   }
   if (r.j === 0) { r.status = "invalido"; r.aj = "ERRO: jornada zerada (saída igual à entrada)"; return r; }
   r.status = "ok"; r.cont = cont;
-  if (r.j > MAX_MIN) r.aj = "ERRO: acima de 10h por dia (limite legal: 8h + 2h)";
+  if (r.j > cap) r.aj = "ERRO: acima de " + fHM(cap).replace(":00", "h").replace(":", "h") + " por dia (limite desta etapa)";
   else r.aj = "OK";
   var req = minInterval(r.j, rule.min);
   if (cont) {
@@ -346,7 +346,7 @@ function compute(inp) {
     var dd;
     if (!inp.works[i]) dd = { status: "repouso", j: 0, iv: 0, aj: "Repouso", ai: "", cont: false };
     else {
-      dd = evalDay(inp.days[i], rule);
+      dd = evalDay(inp.days[i], rule, stage === "42" ? 504 : 480);
       if (dd.status === "ok") { o.total += dd.j; o.okCount++; } else o.pending++;
     }
     dd.as = "";
